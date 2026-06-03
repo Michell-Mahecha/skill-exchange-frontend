@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "puppeteer-core": "^25.1.0",
     "tailwindcss": "^4"
   }
 }
