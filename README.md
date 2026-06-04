@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Skill Exchange Frontend
 
-## Getting Started
+Aplicación web construida con Next.js que consume la API REST de Skills Exchange.
 
-First, run the development server:
+## Tecnologías
 
-```bash
+- Next.js 16
+- React
+- Tailwind CSS
+- Axios
+
+## Requisitos
+
+- Node.js 18+
+- npm
+
+## Instalación y ejecución
+
+git clone https://github.com/Michell-Mahecha/skill-exchange-frontend.git
+cd skill-exchange-frontend
+npm install
+echo "NEXT_PUBLIC_API_BASE_URL=https://apiskills.danidev.co/api" > .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre http://localhost:3000 en el navegador.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Páginas implementadas
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/` — Landing page de presentación
+- `/login` — Autenticación JWT
+- `/dashboard` — Bienvenida con datos del usuario
+- `/dashboard/skills` — Listado de skills con filtros, búsqueda, ordenamiento y paginación
+- `/dashboard/skills/[id]` — Detalle de una skill
+- `/dashboard/users` — Listado de usuarios con paginación
+- `/dashboard/goals` — Metas de aprendizaje con barra de progreso y botón para alcanzar meta
 
-## Learn More
+## Organización de componentes
 
-To learn more about Next.js, take a look at the following resources:
+Las páginas están organizadas en grupos de rutas: `(auth)` para login y `(dashboard)` para las páginas protegidas.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+La autenticación se maneja con tokens JWT en localStorage. El archivo `src/lib/api.js` centraliza todas las peticiones al API usando Axios con un interceptor que agrega el token automáticamente.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Decisiones de arquitectura
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **API centralizada:** todas las llamadas al backend pasan por `lib/api.js` para evitar duplicación.
+- **Protección de rutas:** el layout del dashboard verifica el token JWT y redirige al login si no existe.
+- **Paginación:** implementada en cada página con conteo total y navegación por páginas.
+- **Estados de UI:** cada página maneja estados de carga, error y lista vacía.
