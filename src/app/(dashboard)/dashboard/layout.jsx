@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 const NAV_LINKS = [
   { href: "/dashboard", label: "Inicio" },
   { href: "/dashboard/skills", label: "Skills" },
+  { href: "/dashboard/users", label: "Usuarios" },
+  { href: "/dashboard/goals", label: "Metas" },
 ]
 
 export default function DashboardLayout({ children }) {
