@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/dashboard/skills", label: "Skills" },
   { href: "/dashboard/users",  label: "Usuarios" },
   { href: "/dashboard/goals",  label: "Metas" },
+  { href: "/chat",             label: "Comunidad" },
 ]
 
 export default function DashboardLayout({ children }) {
