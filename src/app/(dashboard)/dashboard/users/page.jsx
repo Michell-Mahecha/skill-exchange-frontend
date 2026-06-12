@@ -1,127 +1,131 @@
 "use client"
-import { useState, useEffect } from "react"
+
+import { useEffect, useState, useCallback } from "react"
 import api from "@/lib/api"
+import { Pagination } from "@/components/ui/pagination"
+import { Search } from "lucide-react"
+
+const PAGE_SIZE = 3
+
+function getInitials(firstName, lastName) {
+  return [firstName, lastName]
+    .filter(Boolean)
+    .map((n) => n[0].toUpperCase())
+    .join("")
+    || "?"
+}
 
 export default function UsersPage() {
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [data, setData] = useState({ count: 0, results: [] })
   const [page, setPage] = useState(1)
-  const [count, setCount] = useState(0)
+  const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(true)
 
+  // Debounce search
   useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true)
-      setError("")
-      try {
-        const params = { page }
-        if (search) params.search = search
-        const { data } = await api.get("/users/", { params })
-        setUsers(data.results)
-        setCount(data.count)
-      } catch (err) {
-        setError("Error al cargar los usuarios.")
-      } finally {
-        setLoading(false)
-      }
+    const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = { page, page_size: PAGE_SIZE }
+      if (search) params.search = search
+      const { data: resp } = await api.get("/users/", { params })
+      setData({
+        count: resp.count ?? 0,
+        results: resp.results ?? (Array.isArray(resp) ? resp : []),
+      })
+    } catch {
+      setData({ count: 0, results: [] })
+    } finally {
+      setLoading(false)
     }
-    fetchUsers()
   }, [page, search])
 
-  const totalPages = Math.ceil(count / 10)
-
-  const getInitials = (user) => {
-    const first = user.first_name?.[0] || ""
-    const last = user.last_name?.[0] || ""
-    return (first + last).toUpperCase() || user.email?.[0].toUpperCase()
-  }
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "16px" }}>Usuarios</h1>
+    <main className="flex-1 p-6 space-y-4">
+      <h1 className="text-xl font-semibold">Usuarios</h1>
 
-      <input
-        type="text"
-        placeholder="Buscar por nombre o email..."
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: "6px", marginBottom: "20px", width: "300px" }}
-      />
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+        <input
+          className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring/50 placeholder:text-muted-foreground"
+          placeholder="Buscar por nombre o email..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+      </div>
 
-      {loading && <p style={{ color: "#6b7280" }}>Cargando usuarios...</p>}
-      {error && <p style={{ color: "#ef4444" }}>{error}</p>}
-      {!loading && !error && users.length === 0 && (
-        <p style={{ color: "#6b7280" }}>No se encontraron usuarios.</p>
-      )}
-
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-        <thead>
-          <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
-            <th style={{ padding: "8px 12px", color: "#6b7280" }}>Usuario</th>
-            <th style={{ padding: "8px 12px", color: "#6b7280" }}>Email</th>
-            <th style={{ padding: "8px 12px", color: "#6b7280" }}>Fecha de ingreso</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <td style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{
-                  width: "32px", height: "32px", borderRadius: "50%",
-                  background: "#3b82f6", color: "#fff",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "12px", fontWeight: "bold", flexShrink: 0
-                }}>
-                  {getInitials(user)}
-                </div>
-                {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Sin nombre"}
-              </td>
-              <td style={{ padding: "10px 12px", color: "#6b7280" }}>{user.email}</td>
-              <td style={{ padding: "10px 12px", color: "#6b7280" }}>
-                {new Date(user.date_joined).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-              </td>
+      {/* Table */}
+      <div className="rounded-lg border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuario</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Email</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">
+                Fecha de ingreso
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                  Cargando...
+                </td>
+              </tr>
+            ) : data.results.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                  No se encontraron usuarios.
+                </td>
+              </tr>
+            ) : (
+              data.results.map((user) => (
+                <tr key={user.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
+                        {getInitials(user.first_name, user.last_name)}
+                      </div>
+                      <span className="font-medium">
+                        {[user.first_name, user.last_name].filter(Boolean).join(" ") || "—"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                    {user.date_joined
+                      ? new Date(user.date_joined).toLocaleDateString("es-CO", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {totalPages > 1 && (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
-    <span style={{ fontSize: "13px", color: "#6b7280" }}>
-      {(page - 1) * 10 + 1}–{Math.min(page * 10, count)} de {count}
-    </span>
-    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-      <button
-        onClick={() => setPage(p => Math.max(1, p - 1))}
-        disabled={page === 1}
-        style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", cursor: "pointer", background: "#fff" }}
-      >
-        ‹
-      </button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-        <button
-          key={p}
-          onClick={() => setPage(p)}
-          style={{
-            padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0",
-            background: page === p ? "#1e293b" : "#fff",
-            color: page === p ? "#fff" : "#374151", cursor: "pointer"
-          }}
-        >
-          {p}
-        </button>
-      ))}
-      <button
-        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-        disabled={page === totalPages}
-        style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", cursor: "pointer", background: "#fff" }}
-      >
-        ›
-      </button>
-    </div>
-  </div>
-)}
-    </div>
+      {/* Pagination */}
+      <Pagination
+        count={data.count}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
+    </main>
   )
 }

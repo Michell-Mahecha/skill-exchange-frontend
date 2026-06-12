@@ -1,158 +1,198 @@
 "use client"
-import { useState, useEffect } from "react"
+
+import { useEffect, useState, useCallback } from "react"
 import api from "@/lib/api"
+import { Pagination } from "@/components/ui/pagination"
+import { LoadingState } from "@/components/ui/LoadingState"
+import { ErrorMessage } from "@/components/ui/ErrorMessage"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { Target, Calendar, CheckCircle2, TrendingUp, Trophy } from "lucide-react"
+
+const PAGE_SIZE = 2
 
 export default function GoalsPage() {
-  const [goals, setGoals] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [data, setData] = useState({ count: 0, results: [] })
   const [page, setPage] = useState(1)
-  const [count, setCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [actionLoading, setActionLoading] = useState(null)
 
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     setLoading(true)
-    setError("")
+    setError(false)
     try {
-      const { data } = await api.get("/goals/", { params: { page } })
-      setGoals(data.results)
-      setCount(data.count)
-    } catch (err) {
-      setError("Error al cargar las metas.")
+      const params = { page, page_size: PAGE_SIZE }
+      const { data: resp } = await api.get("/goals/", { params })
+      setData({
+        count: resp.count ?? 0,
+        results: resp.results ?? (Array.isArray(resp) ? resp : []),
+      })
+    } catch {
+      setError(true)
     } finally {
       setLoading(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
     fetchGoals()
-  }, [page])
+  }, [fetchGoals])
 
-  const handleAchieve = async (id) => {
+  const handleAchieveGoal = async (goalId) => {
+    setActionLoading(goalId)
     try {
-      await api.post("/goals/" + id + "/achieve/")
-      fetchGoals()
+      await api.post(`/goals/${goalId}/achieve/`)
+      // Refrescar los datos localmente
+      await fetchGoals()
     } catch (err) {
-      alert("Error al marcar la meta como alcanzada.")
+      alert("Error al marcar la meta como alcanzada. Inténtalo de nuevo.")
+    } finally {
+      setActionLoading(null)
     }
-  }
-
-  const totalPages = Math.ceil(count / 10)
-
-  const progressColor = (progress) => {
-    if (progress >= 100) return "#22c55e"
-    if (progress >= 50) return "#3b82f6"
-    return "#f97316"
-  }
+  };
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "8px" }}>Metas de Aprendizaje</h1>
-      <p style={{ color: "#6b7280", marginBottom: "24px" }}>Establece objetivos de estudio, mide tu progreso y alcanza tus metas.</p>
-
-      {loading && <p style={{ color: "#6b7280" }}>Cargando metas...</p>}
-      {error && <p style={{ color: "#ef4444" }}>{error}</p>}
-      {!loading && !error && goals.length === 0 && (
-        <p style={{ color: "#6b7280" }}>No tienes metas de aprendizaje.</p>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-        {goals.map((goal) => {
-          const current = parseFloat(goal.current_value) || 0
-          const target = parseFloat(goal.target_value) || 1
-          const percent = Math.min(100, Math.round((current / target) * 100))
-          const achieved = percent >= 100
-
-          return (
-            <div key={goal.id} style={{
-              border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px",
-              background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                <p style={{ fontWeight: "bold", fontSize: "15px" }}>{goal.title}</p>
-                {achieved && (
-                  <span style={{ fontSize: "11px", color: "#22c55e", border: "1px solid #22c55e", borderRadius: "12px", padding: "2px 8px" }}>
-                    Alcanzada
-                  </span>
-                )}
-              </div>
-
-              {goal.skill_name && (
-                <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "8px" }}>
-                  Skill vinculada: {goal.skill_name}
-                </p>
-              )}
-
-              <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>Progreso</p>
-              <div style={{ background: "#f1f5f9", borderRadius: "4px", height: "6px", marginBottom: "4px" }}>
-                <div style={{
-                  width: percent + "%", height: "100%",
-                  background: progressColor(percent), borderRadius: "4px",
-                  transition: "width 0.3s"
-                }} />
-              </div>
-              <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "12px" }}>
-                {current} / {target} ({percent}%)
-              </p>
-
-              {goal.deadline && (
-                <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "12px" }}>
-                  Limite: {new Date(goal.deadline).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
-                </p>
-              )}
-
-              {!achieved && (
-                <button
-                  onClick={() => handleAchieve(goal.id)}
-                  style={{
-                    width: "100%", padding: "8px", borderRadius: "6px",
-                    background: "#3b82f6", color: "#fff", border: "none",
-                    cursor: "pointer", fontSize: "13px", fontWeight: "bold"
-                  }}
-                >
-                  Alcanzar meta
-                </button>
-              )}
-            </div>
-          )
-        })}
+    <main className="flex-1 p-6 space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Metas de Aprendizaje</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Establece objetivos de estudio, mide tu progreso y alcanza tus metas.
+          </p>
+        </div>
+        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <Trophy className="size-5" />
+        </div>
       </div>
 
-      {totalPages > 1 && (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
-    <span style={{ fontSize: "13px", color: "#6b7280" }}>
-      {(page - 1) * 10 + 1}–{Math.min(page * 10, count)} de {count}
-    </span>
-    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-      <button
-        onClick={() => setPage(p => Math.max(1, p - 1))}
-        disabled={page === 1}
-        style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", cursor: "pointer", background: "#fff" }}
-      >
-        ‹
-      </button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-        <button
-          key={p}
-          onClick={() => setPage(p)}
-          style={{
-            padding: "6px 12px", borderRadius: "6px", border: "1px solid #e2e8f0",
-            background: page === p ? "#1e293b" : "#fff",
-            color: page === p ? "#fff" : "#374151", cursor: "pointer"
-          }}
-        >
-          {p}
-        </button>
-      ))}
-      <button
-        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-        disabled={page === totalPages}
-        style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", cursor: "pointer", background: "#fff" }}
-      >
-        ›
-      </button>
-    </div>
-  </div>
-)}
-    </div>
+      {/* Estados de carga / error / vacío */}
+      {loading && <LoadingState message="Cargando metas de aprendizaje..." />}
+
+      {!loading && error && (
+        <ErrorMessage
+          message="No se pudieron cargar tus metas de aprendizaje. Revisa tu conexión."
+          onRetry={fetchGoals}
+        />
+      )}
+
+      {!loading && !error && data.results.length === 0 && (
+        <EmptyState
+          icon="🎯"
+          title="Sin metas activas"
+          message="No tienes ninguna meta configurada en este momento. ¡Añade metas para motivar tu estudio!"
+        />
+      )}
+
+      {/* Grid de Metas */}
+      {!loading && !error && data.results.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {data.results.map((goal) => {
+            const pct = Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
+            const isAchieved = goal.status === 'achieved'
+
+            return (
+              <div
+                key={goal.id}
+                className="rounded-lg border border-border p-5 bg-background space-y-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between"
+              >
+                {/* Decoración lateral según estado */}
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-1 ${
+                    isAchieved ? "bg-emerald-500" : "bg-primary"
+                  }`}
+                />
+
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-sm leading-tight text-foreground line-clamp-1">
+                      {goal.title}
+                    </h3>
+                    {isAchieved ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 className="size-3" />
+                        Alcanzada
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        <TrendingUp className="size-3" />
+                        En progreso
+                      </span>
+                    )}
+                  </div>
+
+                  {goal.skill && (
+                    <p className="text-xs text-muted-foreground font-medium">
+                      Skill vinculada: <span className="text-foreground">{goal.skill.name}</span>
+                    </p>
+                  )}
+
+                  {goal.description && (
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                      {goal.description}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-3 border-t border-border mt-auto">
+                  {/* Progreso */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span>Progreso</span>
+                      <span>
+                        {goal.current_value} / {goal.target_value} ({pct}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isAchieved ? "bg-emerald-500" : "bg-primary"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Metadatos inferiores */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="size-3.5" />
+                      <span>
+                        Límite:{" "}
+                        {goal.target_date
+                          ? new Date(goal.target_date).toLocaleDateString("es-CO", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "—"}
+                      </span>
+                    </div>
+
+                    {!isAchieved && (
+                      <button
+                        onClick={() => handleAchieveGoal(goal.id)}
+                        disabled={actionLoading === goal.id}
+                        className="px-2.5 py-1 rounded bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/95 transition-colors disabled:opacity-50"
+                      >
+                        {actionLoading === goal.id ? "Completando..." : "Alcanzar"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Paginación */}
+      {!loading && !error && (
+        <Pagination
+          count={data.count}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+      )}
+    </main>
   )
 }

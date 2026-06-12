@@ -1,48 +1,48 @@
 # Skill Exchange Frontend
 
-Aplicación web construida con Next.js que consume la API REST de Skills Exchange.
+This is the Next.js frontend application for the **Skill Exchange** platform. It integrates with the Django REST Framework backend to provide a learning and mentorship workspace, featuring a real-time community chat powered by Firebase and an AI assistant powered by Google Gemini.
 
-## Tecnologías
+## Getting Started
 
-- Next.js 16
-- React
-- Tailwind CSS
-- Axios
+Follow these steps to get the frontend up and running locally:
 
-## Requisitos
+### 1. Prerequisites
+Ensure you have the following installed on your system:
+- **Node.js** (v18 or higher recommended)
+- **npm** or **yarn** / **pnpm** / **bun**
 
-- Node.js 18+
-- npm
+### 2. Configure Environment Variables
+Copy the template environment file to create your local environment configuration:
+```bash
+cp .env.example .env.local
+```
+Then, fill in the required keys in `.env.local`:
+- **API Base URL**: Configured by default to `http://localhost:8000/api` for local development.
+- **Firebase Configuration**: Obtain these credentials from your Firebase Console -> Project Settings.
+- **Gemini API Key**: Obtain a key from [Google AI Studio](https://aistudio.google.com/) to enable the `@gemini` AI assistant in the community chat. (See [README_GEMINI.md](file:///Users/daniel/skill_exchange/skill-exchange-frontend/README_GEMINI.md) for detailed instructions).
 
-## Instalación y ejecución
+### 3. Setup and Run the Backend Locally
+To test the full functionality (user logins, skills, profiles, mentorship sessions), the backend API must be running.
 
-git clone https://github.com/Michell-Mahecha/skill-exchange-frontend.git
-cd skill-exchange-frontend
+1. Navigate to the backend repository folder: `../skill_exchange_api`.
+2. Follow the setup instructions in the [Backend README](file:///Users/daniel/skill_exchange/skill_exchange_api/README.md):
+   - Copy `.env.example` to `.env` (`cp .env.example .env`).
+   - Create and activate a Python virtual environment.
+   - Install dependencies (`pip install -r requirements.txt`).
+   - Run database migrations (`python manage.py migrate`).
+   - Create your administrator account (`python manage.py createsuperuser`).
+   - (Optional) Populate the database with test data (`python manage.py populate_data --clear`).
+   - Start the backend server (`python manage.py runserver`).
+3. The backend API will run at `http://localhost:8000/api`. Ensure your `.env.local` has:
+   ```env
+   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+   ```
+
+### 4. Install Dependencies and Run the Frontend
+Return to the frontend repository root and execute:
+```bash
 npm install
-echo "NEXT_PUBLIC_API_BASE_URL=https://apiskills.danidev.co/api" > .env.local
 npm run dev
+```
 
-Abre http://localhost:3000 en el navegador.
-
-## Páginas implementadas
-
-- `/` — Landing page de presentación
-- `/login` — Autenticación JWT
-- `/dashboard` — Bienvenida con datos del usuario
-- `/dashboard/skills` — Listado de skills con filtros, búsqueda, ordenamiento y paginación
-- `/dashboard/skills/[id]` — Detalle de una skill
-- `/dashboard/users` — Listado de usuarios con paginación
-- `/dashboard/goals` — Metas de aprendizaje con barra de progreso y botón para alcanzar meta
-
-## Organización de componentes
-
-Las páginas están organizadas en grupos de rutas: `(auth)` para login y `(dashboard)` para las páginas protegidas.
-
-La autenticación se maneja con tokens JWT en localStorage. El archivo `src/lib/api.js` centraliza todas las peticiones al API usando Axios con un interceptor que agrega el token automáticamente.
-
-## Decisiones de arquitectura
-
-- **API centralizada:** todas las llamadas al backend pasan por `lib/api.js` para evitar duplicación.
-- **Protección de rutas:** el layout del dashboard verifica el token JWT y redirige al login si no existe.
-- **Paginación:** implementada en cada página con conteo total y navegación por páginas.
-- **Estados de UI:** cada página maneja estados de carga, error y lista vacía.
+Open [http://localhost:3000](http://localhost:3000) in your browser to interact with the platform.
